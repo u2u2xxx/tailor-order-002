@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>手机连接诊断</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+        margin: 0;
+        padding: 24px;
+        line-height: 1.7;
+      }
+      code {
+        background: #f1f1f1;
+        border-radius: 6px;
+        padding: 2px 6px;
+      }
+      .ok {
+        color: #176b64;
+        font-weight: 800;
+      }
+      .bad {
+        color: #b95742;
+        font-weight: 800;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>手机连接诊断</h1>
+    <p class="ok">如果你能看到这行字，手机已经能访问电脑的 4173 服务。</p>
+    <p id="jsStatus" class="bad">JavaScript 还没有执行。</p>
+    <p id="supabaseStatus">正在测试 Supabase 网络...</p>
+    <script>
+      document.getElementById("jsStatus").textContent = "JavaScript 可以执行。";
+      document.getElementById("jsStatus").className = "ok";
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 12000);
+      fetch("https://pnoxgrjyjgnvmpkfigjb.supabase.co/rest/v1/", {
+        headers: {
+          apikey: "sb_publishable_tjLm8jC5m7ILf_DsPY5Slw_aVkbx7dI",
+        },
+        signal: controller.signal,
+      })
+        .then((response) => {
+          document.getElementById("supabaseStatus").textContent =
+            "Supabase 网络可访问，状态码：" + response.status;
+          document.getElementById("supabaseStatus").className = "ok";
+        })
+        .catch((error) => {
+          document.getElementById("supabaseStatus").textContent =
+            "Supabase 网络测试失败：" + error.message;
+          document.getElementById("supabaseStatus").className = "bad";
+        })
+        .finally(() => clearTimeout(timer));
+    </script>
+  </body>
+</html>
