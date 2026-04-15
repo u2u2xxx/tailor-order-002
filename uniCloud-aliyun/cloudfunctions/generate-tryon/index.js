@@ -11,13 +11,11 @@ function readLocalConfig() {
 }
 
 function response(statusCode, body) {
-  const localConfig = readLocalConfig();
   return {
     mpserverlessComposedResponse: true,
     isBase64Encoded: false,
     statusCode,
     headers: {
-      "Access-Control-Allow-Origin": process.env.ALLOWED_ORIGIN || localConfig.ALLOWED_ORIGIN || "*",
       "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type,Authorization",
       "Access-Control-Expose-Headers": "Content-Type",
