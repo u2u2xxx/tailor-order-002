@@ -8,6 +8,7 @@ const REQUEST_TIMEOUT_MS = 12000;
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const shareBaseUrl = import.meta.env.VITE_SHARE_BASE_URL;
+const aiFreeQuota = Number(import.meta.env.VITE_AI_FREE_QUOTA || 200);
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 const measurements = [
@@ -113,6 +114,7 @@ let state = {
   activeClientId: initialClient.id,
   activePlanId: fallbackPlans[0].id,
   activeAngle: "front",
+  aiUsageCount: 0,
   loading: false,
   error: "",
   cloudReady: false,
@@ -266,6 +268,7 @@ async function loadRemoteData() {
   );
   const resultRows = await fetchTable("try_on_results", supabase.from("try_on_results").select("*"));
   const feedbackRows = await fetchTable("client_feedback", supabase.from("client_feedback").select("*"));
+  const aiUsageCount = await fetchAiUsageCount();
 
   const session = readSession();
   state.plans = planRows.length ? planRows.map(normalizePlan) : fallbackPlans;
@@ -277,8 +280,21 @@ async function loadRemoteData() {
     ? session.activePlanId
     : state.plans[0]?.id ?? "";
   state.activeAngle = tryOnAngles.some((angle) => angle.key === session.activeAngle) ? session.activeAngle : "front";
+  state.aiUsageCount = aiUsageCount;
   state.error = "";
   state.cloudReady = true;
+}
+
+async function fetchAiUsageCount() {
+  const { count, error } = await supabase.from("ai_generation_logs").select("id", {
+    count: "exact",
+    head: true,
+  });
+  if (error) {
+    console.warn("AI usage count unavailable:", error.message);
+    return state.aiUsageCount ?? 0;
+  }
+  return count ?? 0;
 }
 
 async function seedFirstClient() {
@@ -340,6 +356,18 @@ function planById(id = state.activePlanId) {
 
 function activeAngle() {
   return tryOnAngles.find((angle) => angle.key === state.activeAngle) ?? tryOnAngles[0];
+}
+
+function remainingAiQuota() {
+  return Math.max(0, aiFreeQuota - (state.aiUsageCount || 0));
+}
+
+function aiQuotaMessage() {
+  const remaining = remainingAiQuota();
+  if (remaining > 0) {
+    return `AI 免费生成剩余 ${remaining} 次，生成成功后扣减 1 次。`;
+  }
+  return "AI 免费额度已用完，本次生成将产生费用，请确认后再生成。";
 }
 
 function clientByShareCode(code) {
@@ -596,6 +624,7 @@ function renderStudio() {
             ${renderAngleTabs()}
             ${tryOnStageMarkup("裁缝后台")}
             <p class="ai-status" id="aiStatus" hidden></p>
+            <p class="ai-quota ${remainingAiQuota() === 0 ? "paid" : ""}">${aiQuotaMessage()}</p>
             <div class="preview-note">
               <strong>当前预览</strong>
               <span>先选择正面、侧面或背面角度，再生成对应 AI 试穿图。上传效果图会覆盖当前角度。</span>
@@ -776,7 +805,7 @@ async function generateTryOnImage() {
   button.disabled = true;
   button.textContent = `${angle.label}生成中...`;
   status.hidden = false;
-  status.textContent = `正在调用 Seedream 4.5 生成${angle.label}试穿图，可能需要几十秒。`;
+  status.textContent = `${aiQuotaMessage()} 正在调用 Seedream 4.5 生成${angle.label}试穿图，可能需要几十秒。`;
   status.className = "ai-status";
 
   try {
@@ -813,6 +842,15 @@ async function generateTryOnImage() {
       { onConflict: "client_id,plan_id,angle" },
     );
     if (error) throw new Error(`保存 AI 效果图失败：${error.message}`);
+
+    await supabase.from("ai_generation_logs").insert({
+      client_id: client.id,
+      plan_id: state.activePlanId,
+      angle: state.activeAngle,
+      provider: "volcengine",
+      model: result.model || "doubao-seedream-4-5-251128",
+      image_url: result.imageUrl,
+    });
 
     status.textContent = `${angle.label} AI 试穿图已生成并保存。`;
     status.className = "ai-status success";

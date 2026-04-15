@@ -24,6 +24,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=你的 publishable key
 VITE_SHARE_BASE_URL=公网或局域网分享地址
 VOLCENGINE_API_KEY=火山方舟 API Key
 VOLCENGINE_IMAGE_MODEL=doubao-seedream-4-5-251128
+VITE_AI_FREE_QUOTA=200
 ```
 
 第一次使用前，在 Supabase 项目的 SQL Editor 里执行：
@@ -58,6 +59,7 @@ npm run build
 - 客户打开链接后查看试穿展示，并提交确认或修改意见。
 - 裁缝可以上传真实 AI 效果图到 Supabase Storage，替换当前的销售展示预览。
 - 裁缝可以调用 Seedream 4.5 生成 AI 试穿图，结果保存到 Supabase。
+- 后台显示 AI 免费生成剩余次数；额度为 0 后提示本次生成将产生费用。
 
 ## 当前限制
 

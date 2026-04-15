@@ -53,6 +53,17 @@ create table if not exists public.client_feedback (
   unique (client_id, plan_id)
 );
 
+create table if not exists public.ai_generation_logs (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid references public.clients(id) on delete set null,
+  plan_id text references public.outfit_plans(id) on delete set null,
+  angle text not null default 'front',
+  provider text not null default 'volcengine',
+  model text not null default 'doubao-seedream-4-5-251128',
+  image_url text default '',
+  created_at timestamptz not null default now()
+);
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -149,6 +160,7 @@ alter table public.clients enable row level security;
 alter table public.outfit_plans enable row level security;
 alter table public.try_on_results enable row level security;
 alter table public.client_feedback enable row level security;
+alter table public.ai_generation_logs enable row level security;
 
 drop policy if exists "mvp public read clients" on public.clients;
 create policy "mvp public read clients" on public.clients
@@ -180,6 +192,14 @@ for select using (true);
 
 drop policy if exists "mvp public write feedback" on public.client_feedback;
 create policy "mvp public write feedback" on public.client_feedback
+for all using (true) with check (true);
+
+drop policy if exists "mvp public read ai generation logs" on public.ai_generation_logs;
+create policy "mvp public read ai generation logs" on public.ai_generation_logs
+for select using (true);
+
+drop policy if exists "mvp public write ai generation logs" on public.ai_generation_logs;
+create policy "mvp public write ai generation logs" on public.ai_generation_logs
 for all using (true) with check (true);
 
 drop policy if exists "mvp public read storage" on storage.objects;

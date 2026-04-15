@@ -749,6 +749,24 @@ textarea:focus {
   color: #8f2e1b;
 }
 
+.ai-quota {
+  background: #edf6f2;
+  border: 1px solid rgba(23, 107, 100, 0.28);
+  border-radius: 8px;
+  color: var(--teal);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.6;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+}
+
+.ai-quota.paid {
+  background: #fff1ec;
+  border-color: rgba(185, 87, 66, 0.36);
+  color: #8f2e1b;
+}
+
 .share-row {
   display: grid;
   gap: 12px;
