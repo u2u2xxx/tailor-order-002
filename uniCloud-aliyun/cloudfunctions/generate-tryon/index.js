@@ -124,6 +124,14 @@ exports.main = async (event = {}, context = {}) => {
     return response(204, {});
   }
 
+  if (methodOf(event) === "GET") {
+    return response(200, {
+      ok: true,
+      service: "generate-tryon",
+      method: "POST",
+    });
+  }
+
   if (methodOf(event) !== "POST") {
     return response(405, { error: "Method not allowed" });
   }
