@@ -6,10 +6,12 @@ function sendJson(response, statusCode, body) {
   response.end(JSON.stringify(body));
 }
 
-function buildPrompt({ clientName, planTitle, material, fit }) {
+function buildPrompt({ clientName, planTitle, material, fit, angleLabel, angleInstruction }) {
   return [
     "基于输入的人物照片生成写实服装试穿展示图。",
     "保持人物的脸部身份、发型、体型、身高比例、站姿和背景氛围，不改变人物年龄和五官。",
+    angleLabel ? `当前生成角度：${angleLabel}。` : "",
+    angleInstruction ? `角度要求：${angleInstruction}` : "",
     `将人物服装改为男式休闲风方案：${planTitle}。`,
     material ? `面料与质感：${material}。` : "",
     fit ? `版型要求：${fit}。` : "",

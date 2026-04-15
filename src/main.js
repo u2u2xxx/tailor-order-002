@@ -53,6 +53,27 @@ const photoSlots = [
   },
 ];
 
+const tryOnAngles = [
+  {
+    key: "front",
+    label: "正面",
+    photoKey: "front",
+    instruction: "正面全身试穿图，人物正面对镜头，保留原照片构图和站姿。",
+  },
+  {
+    key: "side",
+    label: "侧面",
+    photoKey: "side",
+    instruction: "侧面全身试穿图，人物侧面对镜头，重点展示胸腹、臀部、袖长和裤长比例。",
+  },
+  {
+    key: "back",
+    label: "背面",
+    photoKey: "back",
+    instruction: "背面全身试穿图，人物背面对镜头，重点展示肩背、后片衣长和短裤后侧比例。",
+  },
+];
+
 const fallbackPlans = [
   {
     id: "moss-henley",
@@ -91,6 +112,7 @@ let state = {
   plans: fallbackPlans,
   activeClientId: initialClient.id,
   activePlanId: fallbackPlans[0].id,
+  activeAngle: "front",
   loading: false,
   error: "",
   cloudReady: false,
@@ -119,6 +141,7 @@ function writeSession() {
     JSON.stringify({
       activeClientId: state.activeClientId,
       activePlanId: state.activePlanId,
+      activeAngle: state.activeAngle,
     }),
   );
 }
@@ -182,7 +205,9 @@ function normalizeClient(row, results = [], feedback = []) {
   results
     .filter((item) => item.client_id === row.id)
     .forEach((item) => {
-      resultImages[item.plan_id] = item.image_url;
+      const angle = item.angle ?? "front";
+      resultImages[item.plan_id] = resultImages[item.plan_id] ?? {};
+      resultImages[item.plan_id][angle] = item.image_url;
     });
 
   const feedbackByPlan = {};
@@ -251,6 +276,7 @@ async function loadRemoteData() {
   state.activePlanId = state.plans.some((plan) => plan.id === session.activePlanId)
     ? session.activePlanId
     : state.plans[0]?.id ?? "";
+  state.activeAngle = tryOnAngles.some((angle) => angle.key === session.activeAngle) ? session.activeAngle : "front";
   state.error = "";
   state.cloudReady = true;
 }
@@ -310,6 +336,10 @@ function activeClient() {
 
 function planById(id = state.activePlanId) {
   return state.plans.find((plan) => plan.id === id) ?? state.plans[0] ?? fallbackPlans[0];
+}
+
+function activeAngle() {
+  return tryOnAngles.find((angle) => angle.key === state.activeAngle) ?? tryOnAngles[0];
 }
 
 function clientByShareCode(code) {
@@ -449,19 +479,26 @@ function applyTryOn(stage, client, plan) {
   const hint = stage.querySelector("[data-stage-hint]");
   const shirt = stage.querySelector("[data-shirt]");
   const shorts = stage.querySelector("[data-shorts]");
-  const result = client?.resultImages?.[plan.id] ?? "";
+  const angle = activeAngle();
+  const sourcePhoto = client?.photoSet?.[angle.photoKey] ?? (angle.key === "front" ? client?.photo : "");
+  const result = client?.resultImages?.[plan.id]?.[angle.key] ?? "";
 
   shirt.style.background = plan.palette[0];
   shorts.style.background = plan.palette[1];
-  setImage(customerPhoto, client?.photo ?? "");
+  setImage(customerPhoto, sourcePhoto ?? "");
   setImage(resultPhoto, result);
-  stage.dataset.viewerSrc = result || client?.photo || "";
-  stage.dataset.viewerTitle = result ? `${client?.name ?? "客户"} - ${plan.title} AI 试穿图` : `${client?.name ?? "客户"} - 原始照片预览`;
-  stage.classList.toggle("has-customer", Boolean(client?.photo));
+  stage.dataset.viewerSrc = result || sourcePhoto || "";
+  stage.dataset.viewerTitle = result
+    ? `${client?.name ?? "客户"} - ${plan.title} ${angle.label} AI 试穿图`
+    : `${client?.name ?? "客户"} - ${angle.label}原始照片预览`;
+  stage.classList.toggle("has-customer", Boolean(sourcePhoto));
   stage.classList.toggle("has-result", Boolean(result));
+  stage.classList.toggle("front-angle", angle.key === "front");
   hint.textContent = result
-    ? "当前显示裁缝上传的真实效果图。"
-    : "当前为方案预览位，可上传 AI 试穿图替换。";
+    ? `当前显示${angle.label} AI 试穿效果图。`
+    : sourcePhoto
+      ? `当前为${angle.label}方案预览位，可生成或上传 AI 试穿图替换。`
+      : `请先上传客户${angle.label}全身照并保存到云端。`;
 }
 
 function tryOnStageMarkup(label) {
@@ -549,18 +586,19 @@ function renderStudio() {
             <div class="section-title split">
               <div>
                 <p>试穿展示</p>
-                <h2>${plan.title}</h2>
+                <h2>${plan.title} · ${activeAngle().label}</h2>
               </div>
               <div class="tryon-actions">
-                <button id="generateTryOnButton" type="button">生成 AI 试穿图</button>
+                <button id="generateTryOnButton" type="button">生成${activeAngle().label} AI 图</button>
                 <label class="result-upload">上传效果图<input id="resultUpload" type="file" accept="image/*"></label>
               </div>
             </div>
+            ${renderAngleTabs()}
             ${tryOnStageMarkup("裁缝后台")}
             <p class="ai-status" id="aiStatus" hidden></p>
             <div class="preview-note">
               <strong>当前预览</strong>
-              <span>先用客户照片叠加方案颜色和比例，帮助沟通方向；上传 AI 试穿效果图后，这里会自动替换为真实展示图。</span>
+              <span>先选择正面、侧面或背面角度，再生成对应 AI 试穿图。上传效果图会覆盖当前角度。</span>
             </div>
             <div class="share-row">
               <button id="copyShareButton" type="button">复制客户链接</button>
@@ -582,6 +620,7 @@ function renderStudio() {
       renderStudio();
     });
   });
+  wireAngleTabs(renderStudio);
 
   document.querySelector("#clientForm").addEventListener("submit", saveClientFromForm);
   document.querySelector("#newClientButton").addEventListener("click", () => {
@@ -594,6 +633,32 @@ function renderStudio() {
   document.querySelector("#copyShareButton").addEventListener("click", copyShareLink);
   applyTryOn(document.querySelector("[data-tryon-stage]"), client, plan);
   wireTryOnViewer();
+}
+
+function renderAngleTabs() {
+  return `
+    <div class="angle-tabs" role="tablist" aria-label="试穿角度">
+      ${tryOnAngles
+        .map(
+          (angle) => `
+            <button class="${angle.key === state.activeAngle ? "active" : ""}" type="button" data-angle="${angle.key}">
+              ${angle.label}
+            </button>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function wireAngleTabs(afterChange) {
+  document.querySelectorAll("[data-angle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeAngle = button.dataset.angle;
+      writeSession();
+      afterChange();
+    });
+  });
 }
 
 function renderPlanCard(plan) {
@@ -678,11 +743,12 @@ async function uploadResultImage(event) {
       {
         client_id: client.id,
         plan_id: state.activePlanId,
+        angle: state.activeAngle,
         image_url: imageUrl,
         source: "manual_upload",
         status: "ready",
       },
-      { onConflict: "client_id,plan_id" },
+      { onConflict: "client_id,plan_id,angle" },
     );
     if (error) throw new Error(`保存效果图失败：${error.message}`);
     await loadRemoteData();
@@ -695,20 +761,22 @@ async function uploadResultImage(event) {
 async function generateTryOnImage() {
   const client = activeClient();
   const plan = planById();
+  const angle = activeAngle();
   const button = document.querySelector("#generateTryOnButton");
   const status = document.querySelector("#aiStatus");
+  const personImageUrl = client?.photoSet?.[angle.photoKey] ?? (angle.key === "front" ? client?.photo : "");
 
-  if (!client?.photo) {
+  if (!personImageUrl) {
     status.hidden = false;
-    status.textContent = "请先上传客户正面全身照并保存到云端。";
+    status.textContent = `请先上传客户${angle.label}全身照并保存到云端。`;
     status.className = "ai-status error";
     return;
   }
 
   button.disabled = true;
-  button.textContent = "生成中...";
+  button.textContent = `${angle.label}生成中...`;
   status.hidden = false;
-  status.textContent = "正在调用 Seedream 4.5 生成试穿图，可能需要几十秒。";
+  status.textContent = `正在调用 Seedream 4.5 生成${angle.label}试穿图，可能需要几十秒。`;
   status.className = "ai-status";
 
   try {
@@ -719,7 +787,10 @@ async function generateTryOnImage() {
       },
       body: JSON.stringify({
         clientName: client.name,
-        personImageUrl: client.photo,
+        personImageUrl,
+        angle: angle.key,
+        angleLabel: angle.label,
+        angleInstruction: angle.instruction,
         planTitle: plan.title,
         material: plan.material,
         fit: plan.fit,
@@ -734,15 +805,16 @@ async function generateTryOnImage() {
       {
         client_id: client.id,
         plan_id: state.activePlanId,
+        angle: state.activeAngle,
         image_url: result.imageUrl,
         source: "seedream_4_5",
         status: "ready",
       },
-      { onConflict: "client_id,plan_id" },
+      { onConflict: "client_id,plan_id,angle" },
     );
     if (error) throw new Error(`保存 AI 效果图失败：${error.message}`);
 
-    status.textContent = "AI 试穿图已生成并保存。";
+    status.textContent = `${angle.label} AI 试穿图已生成并保存。`;
     status.className = "ai-status success";
     await loadRemoteData();
     renderStudio();
@@ -751,7 +823,7 @@ async function generateTryOnImage() {
     status.className = "ai-status error";
   } finally {
     button.disabled = false;
-    button.textContent = "生成 AI 试穿图";
+    button.textContent = `生成${angle.label} AI 图`;
   }
 }
 
@@ -804,7 +876,7 @@ function renderClientView() {
         <article class="panel decision-panel">
           <div class="section-title">
             <p>当前方案</p>
-            <h2>${plan.title}</h2>
+            <h2>${plan.title} · ${activeAngle().label}</h2>
           </div>
           <div class="plan-detail">
             <span>${plan.material}</span>
@@ -814,6 +886,7 @@ function renderClientView() {
             <strong>确认重点</strong>
             <span>先看上身感觉、颜色气质、衣长裤长比例。细节尺寸会由裁缝按量体数据继续调整。</span>
           </div>
+          ${renderAngleTabs()}
           <dl class="metric-list client-metrics">${renderClientMeasurements(client)}</dl>
           <textarea id="clientNote" placeholder="想调整颜色、衣长、袖长、裤长或松量，可以写在这里。">${feedback.note ?? ""}</textarea>
           <div class="decision-actions">
@@ -828,6 +901,7 @@ function renderClientView() {
 
   applyTryOn(document.querySelector("[data-tryon-stage]"), client, plan);
   wireTryOnViewer();
+  wireAngleTabs(renderClientView);
   document.querySelector("#approveButton").addEventListener("click", () => saveFeedback(client, plan.id, "approved"));
   document.querySelector("#reviseButton").addEventListener("click", () => saveFeedback(client, plan.id, "revise"));
 }

@@ -705,6 +705,26 @@ textarea:focus {
   justify-content: flex-end;
 }
 
+.angle-tabs {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 12px;
+}
+
+.angle-tabs button {
+  background: #fff;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  min-height: 38px;
+}
+
+.angle-tabs button.active {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+}
+
 .ai-status {
   background: #f4f1eb;
   border: 1px solid var(--line);

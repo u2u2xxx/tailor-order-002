@@ -33,12 +33,13 @@ create table if not exists public.try_on_results (
   id uuid primary key default gen_random_uuid(),
   client_id uuid not null references public.clients(id) on delete cascade,
   plan_id text not null references public.outfit_plans(id) on delete cascade,
+  angle text not null default 'front',
   image_url text not null,
   source text not null default 'manual_upload',
   status text not null default 'ready',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (client_id, plan_id)
+  unique (client_id, plan_id, angle)
 );
 
 create table if not exists public.client_feedback (
@@ -79,6 +80,19 @@ drop trigger if exists try_on_results_set_updated_at on public.try_on_results;
 create trigger try_on_results_set_updated_at
 before update on public.try_on_results
 for each row execute function public.set_updated_at();
+
+alter table public.try_on_results
+add column if not exists angle text not null default 'front';
+
+update public.try_on_results
+set angle = 'front'
+where angle is null;
+
+alter table public.try_on_results
+drop constraint if exists try_on_results_client_id_plan_id_key;
+
+create unique index if not exists try_on_results_client_plan_angle_key
+on public.try_on_results (client_id, plan_id, angle);
 
 drop trigger if exists client_feedback_set_updated_at on public.client_feedback;
 create trigger client_feedback_set_updated_at
