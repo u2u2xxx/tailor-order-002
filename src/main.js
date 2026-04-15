@@ -540,9 +540,13 @@ function renderStudio() {
                 <p>试穿展示</p>
                 <h2>${plan.title}</h2>
               </div>
-              <label class="result-upload">上传效果图<input id="resultUpload" type="file" accept="image/*"></label>
+              <div class="tryon-actions">
+                <button id="generateTryOnButton" type="button">生成 AI 试穿图</button>
+                <label class="result-upload">上传效果图<input id="resultUpload" type="file" accept="image/*"></label>
+              </div>
             </div>
             ${tryOnStageMarkup("裁缝后台")}
+            <p class="ai-status" id="aiStatus" hidden></p>
             <div class="preview-note">
               <strong>当前预览</strong>
               <span>先用客户照片叠加方案颜色和比例，帮助沟通方向；上传 AI 试穿效果图后，这里会自动替换为真实展示图。</span>
@@ -574,6 +578,7 @@ function renderStudio() {
     writeSession();
     renderStudio();
   });
+  document.querySelector("#generateTryOnButton").addEventListener("click", generateTryOnImage);
   document.querySelector("#resultUpload").addEventListener("change", uploadResultImage);
   document.querySelector("#copyShareButton").addEventListener("click", copyShareLink);
   applyTryOn(document.querySelector("[data-tryon-stage]"), client, plan);
@@ -672,6 +677,69 @@ async function uploadResultImage(event) {
     renderStudio();
   } catch (error) {
     showFormError(error.message);
+  }
+}
+
+async function generateTryOnImage() {
+  const client = activeClient();
+  const plan = planById();
+  const button = document.querySelector("#generateTryOnButton");
+  const status = document.querySelector("#aiStatus");
+
+  if (!client?.photo) {
+    status.hidden = false;
+    status.textContent = "请先上传客户正面全身照并保存到云端。";
+    status.className = "ai-status error";
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "生成中...";
+  status.hidden = false;
+  status.textContent = "正在调用 Seedream 4.5 生成试穿图，可能需要几十秒。";
+  status.className = "ai-status";
+
+  try {
+    const response = await fetch("/api/generate-tryon", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        clientName: client.name,
+        personImageUrl: client.photo,
+        planTitle: plan.title,
+        material: plan.material,
+        fit: plan.fit,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result?.error || "AI 试穿图生成失败");
+    }
+
+    const { error } = await supabase.from("try_on_results").upsert(
+      {
+        client_id: client.id,
+        plan_id: state.activePlanId,
+        image_url: result.imageUrl,
+        source: "seedream_4_5",
+        status: "ready",
+      },
+      { onConflict: "client_id,plan_id" },
+    );
+    if (error) throw new Error(`保存 AI 效果图失败：${error.message}`);
+
+    status.textContent = "AI 试穿图已生成并保存。";
+    status.className = "ai-status success";
+    await loadRemoteData();
+    renderStudio();
+  } catch (error) {
+    status.textContent = error.message;
+    status.className = "ai-status error";
+  } finally {
+    button.disabled = false;
+    button.textContent = "生成 AI 试穿图";
   }
 }
 

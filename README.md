@@ -21,6 +21,9 @@ npm install
 ```text
 VITE_SUPABASE_URL=你的 Supabase Project URL
 VITE_SUPABASE_PUBLISHABLE_KEY=你的 publishable key
+VITE_SHARE_BASE_URL=公网或局域网分享地址
+VOLCENGINE_API_KEY=火山方舟 API Key
+VOLCENGINE_IMAGE_MODEL=doubao-seedream-4-5-251128
 ```
 
 第一次使用前，在 Supabase 项目的 SQL Editor 里执行：
@@ -54,6 +57,7 @@ npm run build
 - 生成客户分享链接。
 - 客户打开链接后查看试穿展示，并提交确认或修改意见。
 - 裁缝可以上传真实 AI 效果图到 Supabase Storage，替换当前的销售展示预览。
+- 裁缝可以调用 Seedream 4.5 生成 AI 试穿图，结果保存到 Supabase。
 
 ## 当前限制
 

@@ -604,6 +604,37 @@ textarea:focus {
   display: none;
 }
 
+.tryon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.ai-status {
+  background: #f4f1eb;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.6;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+}
+
+.ai-status.success {
+  background: #edf6f2;
+  border-color: rgba(23, 107, 100, 0.34);
+  color: var(--teal);
+}
+
+.ai-status.error {
+  background: #fff1ec;
+  border-color: rgba(185, 87, 66, 0.36);
+  color: #8f2e1b;
+}
+
 .share-row {
   display: grid;
   gap: 12px;
@@ -770,6 +801,7 @@ textarea {
 @media (max-width: 760px) {
   .topbar,
   .split,
+  .tryon-actions,
   .share-row {
     align-items: stretch;
     flex-direction: column;
