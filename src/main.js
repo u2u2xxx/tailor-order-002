@@ -813,7 +813,7 @@ async function generateTryOnImage() {
     const response = await fetch(aiApiUrl, {
       method: "POST",
       headers: {
-        "content-type": "application/json",
+        "content-type": "text/plain;charset=utf-8",
       },
       body: JSON.stringify({
         clientName: client.name,
