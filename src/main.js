@@ -8,6 +8,7 @@ const REQUEST_TIMEOUT_MS = 12000;
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const shareBaseUrl = import.meta.env.VITE_SHARE_BASE_URL;
+const aiApiUrl = import.meta.env.VITE_AI_API_URL || "/api/generate-tryon";
 const aiFreeQuota = Number(import.meta.env.VITE_AI_FREE_QUOTA || 200);
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
@@ -809,7 +810,7 @@ async function generateTryOnImage() {
   status.className = "ai-status";
 
   try {
-    const response = await fetch("/api/generate-tryon", {
+    const response = await fetch(aiApiUrl, {
       method: "POST",
       headers: {
         "content-type": "application/json",

@@ -23,6 +23,7 @@ VITE_SUPABASE_URL=你的 Supabase Project URL
 VITE_SUPABASE_PUBLISHABLE_KEY=你的 publishable key
 VITE_SHARE_BASE_URL=公网或局域网分享地址
 VOLCENGINE_API_KEY=火山方舟 API Key
+VITE_AI_API_URL=/api/generate-tryon
 VOLCENGINE_IMAGE_MODEL=doubao-seedream-4-5-251128
 VITE_AI_FREE_QUOTA=200
 ```
@@ -48,6 +49,46 @@ Vite 会输出电脑访问地址和同 Wi-Fi 手机访问地址。
 ```powershell
 npm run build
 ```
+
+## 国内部署迁移
+
+迁移时先保持 Supabase 不动，只替换前端静态托管和 AI 生成接口。
+
+推荐结构：
+
+- 前端：部署 `npm run build` 生成的 `dist/` 到国内静态托管，例如腾讯云 CloudBase 静态网站托管、阿里云 OSS + CDN、又拍云、七牛云等。
+- AI 接口：部署 `cloud-functions/generate-tryon/` 到国内云函数或 Web 函数，并开放一个 HTTPS POST 地址。
+- 数据和图片：继续使用现有 Supabase 项目的数据库与 Storage。
+
+前端环境变量：
+
+```text
+VITE_SUPABASE_URL=你的 Supabase Project URL
+VITE_SUPABASE_PUBLISHABLE_KEY=你的 publishable key
+VITE_SHARE_BASE_URL=国内静态站点访问地址
+VITE_AI_API_URL=国内云函数 HTTPS 地址
+VITE_AI_FREE_QUOTA=200
+```
+
+如果前端和 AI 接口部署在同一个域名下，`VITE_AI_API_URL` 可以继续使用 `/api/generate-tryon`。如果它们是两个域名，填完整地址，例如 `https://example.com/generate-tryon`。
+
+云函数环境变量：
+
+```text
+VOLCENGINE_API_KEY=火山方舟 API Key
+VOLCENGINE_IMAGE_MODEL=doubao-seedream-4-5-251128
+ALLOWED_ORIGIN=前端域名，测试时可先用 *
+```
+
+云函数入口文件在 `cloud-functions/generate-tryon/index.js`，导出 `main` 和 `handler`。请求体与原 Vercel `/api/generate-tryon` 保持一致，返回 `{ imageUrl, model, prompt }`，前端无需再改业务逻辑。
+
+部署检查：
+
+```powershell
+npm run build
+```
+
+构建成功后，把 `dist/` 上传到国内静态托管，并把云函数的公网 HTTPS 地址写入生产环境的 `VITE_AI_API_URL` 后重新构建。
 
 ## 当前功能
 
