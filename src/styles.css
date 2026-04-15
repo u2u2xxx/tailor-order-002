@@ -26,6 +26,10 @@ body {
   font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
 }
 
+body.viewer-open {
+  overflow: hidden;
+}
+
 button,
 input,
 textarea {
@@ -498,12 +502,102 @@ textarea:focus {
   min-height: 500px;
   overflow: hidden;
   position: relative;
+  cursor: zoom-in;
 }
 
 .tryon-stage > img,
 .garment-preview,
 .tryon-stage [data-stage-hint] {
   position: absolute;
+}
+
+.image-viewer {
+  background: rgba(18, 17, 16, 0.92);
+  color: #fffdfa;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  inset: 0;
+  padding: 14px;
+  position: fixed;
+  z-index: 1000;
+}
+
+.image-viewer-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 6px 46px 10px 6px;
+}
+
+.image-viewer-toolbar strong {
+  line-height: 1.4;
+}
+
+.image-viewer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.image-viewer-actions button,
+.image-viewer-actions a {
+  background: rgba(255, 253, 250, 0.12);
+  border: 1px solid rgba(255, 253, 250, 0.22);
+  border-radius: 8px;
+  color: #fffdfa;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 8px 10px;
+  text-decoration: none;
+}
+
+.image-viewer-close {
+  align-items: center;
+  background: rgba(255, 253, 250, 0.9);
+  border-radius: 50%;
+  color: #23211e;
+  display: grid;
+  font-size: 18px;
+  height: 30px;
+  justify-items: center;
+  line-height: 1;
+  padding: 0;
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: 30px;
+  z-index: 1001;
+}
+
+.image-viewer-close:hover {
+  background: #fff;
+}
+
+.image-viewer-canvas {
+  align-items: center;
+  border-radius: 8px;
+  cursor: grab;
+  display: grid;
+  justify-items: center;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.image-viewer-canvas:active {
+  cursor: grabbing;
+}
+
+.image-viewer-canvas img {
+  max-height: 86vh;
+  max-width: 94vw;
+  object-fit: contain;
+  transform-origin: center center;
+  transition: transform 0.04s linear;
+  user-select: none;
+  will-change: transform;
 }
 
 .tryon-stage > img {
@@ -859,6 +953,33 @@ textarea {
   .tryon-stage,
   .client-stage-panel .tryon-stage {
     min-height: 520px;
+  }
+
+  .image-viewer {
+    padding: 10px;
+  }
+
+  .image-viewer-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 40px;
+  }
+
+  .image-viewer-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .image-viewer-actions button,
+  .image-viewer-actions a {
+    font-size: 12px;
+    padding: 8px 6px;
+    text-align: center;
+  }
+
+  .image-viewer-canvas img {
+    max-height: 78vh;
   }
 }
 

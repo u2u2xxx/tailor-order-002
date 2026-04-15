@@ -96,6 +96,15 @@ let state = {
   cloudReady: false,
 };
 
+let viewerState = {
+  scale: 1,
+  x: 0,
+  y: 0,
+  dragging: false,
+  startX: 0,
+  startY: 0,
+};
+
 function readSession() {
   try {
     return JSON.parse(localStorage.getItem(SESSION_KEY)) ?? {};
@@ -446,6 +455,8 @@ function applyTryOn(stage, client, plan) {
   shorts.style.background = plan.palette[1];
   setImage(customerPhoto, client?.photo ?? "");
   setImage(resultPhoto, result);
+  stage.dataset.viewerSrc = result || client?.photo || "";
+  stage.dataset.viewerTitle = result ? `${client?.name ?? "客户"} - ${plan.title} AI 试穿图` : `${client?.name ?? "客户"} - 原始照片预览`;
   stage.classList.toggle("has-customer", Boolean(client?.photo));
   stage.classList.toggle("has-result", Boolean(result));
   hint.textContent = result
@@ -582,6 +593,7 @@ function renderStudio() {
   document.querySelector("#resultUpload").addEventListener("change", uploadResultImage);
   document.querySelector("#copyShareButton").addEventListener("click", copyShareLink);
   applyTryOn(document.querySelector("[data-tryon-stage]"), client, plan);
+  wireTryOnViewer();
 }
 
 function renderPlanCard(plan) {
@@ -815,8 +827,112 @@ function renderClientView() {
   `;
 
   applyTryOn(document.querySelector("[data-tryon-stage]"), client, plan);
+  wireTryOnViewer();
   document.querySelector("#approveButton").addEventListener("click", () => saveFeedback(client, plan.id, "approved"));
   document.querySelector("#reviseButton").addEventListener("click", () => saveFeedback(client, plan.id, "revise"));
+}
+
+function wireTryOnViewer() {
+  document.querySelectorAll("[data-tryon-stage]").forEach((stage) => {
+    stage.addEventListener("click", () => {
+      if (!stage.dataset.viewerSrc) return;
+      openImageViewer(stage.dataset.viewerSrc, stage.dataset.viewerTitle || "试穿效果图");
+    });
+  });
+}
+
+function openImageViewer(src, title) {
+  closeImageViewer();
+  viewerState = {
+    scale: 1,
+    x: 0,
+    y: 0,
+    dragging: false,
+    startX: 0,
+    startY: 0,
+  };
+
+  const viewer = document.createElement("section");
+  viewer.className = "image-viewer";
+  viewer.innerHTML = `
+    <div class="image-viewer-toolbar">
+      <strong>${title}</strong>
+      <div class="image-viewer-actions">
+        <button type="button" data-zoom-out>缩小</button>
+        <button type="button" data-zoom-reset>还原</button>
+        <button type="button" data-zoom-in>放大</button>
+        <a href="${src}" download target="_blank" rel="noreferrer">下载</a>
+      </div>
+    </div>
+    <button class="image-viewer-close" type="button" aria-label="关闭">×</button>
+    <div class="image-viewer-canvas">
+      <img src="${src}" alt="${title}" draggable="false">
+    </div>
+  `;
+  document.body.append(viewer);
+  document.body.classList.add("viewer-open");
+
+  const img = viewer.querySelector("img");
+  const canvas = viewer.querySelector(".image-viewer-canvas");
+
+  function updateTransform() {
+    img.style.transform = `translate(${viewerState.x}px, ${viewerState.y}px) scale(${viewerState.scale})`;
+  }
+
+  function zoom(delta) {
+    viewerState.scale = Math.min(5, Math.max(0.5, Number((viewerState.scale + delta).toFixed(2))));
+    updateTransform();
+  }
+
+  viewer.querySelector(".image-viewer-close").addEventListener("click", closeImageViewer);
+  viewer.querySelector("[data-zoom-in]").addEventListener("click", () => zoom(0.25));
+  viewer.querySelector("[data-zoom-out]").addEventListener("click", () => zoom(-0.25));
+  viewer.querySelector("[data-zoom-reset]").addEventListener("click", () => {
+    viewerState.scale = 1;
+    viewerState.x = 0;
+    viewerState.y = 0;
+    updateTransform();
+  });
+
+  canvas.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    zoom(event.deltaY > 0 ? -0.18 : 0.18);
+  });
+
+  canvas.addEventListener("pointerdown", (event) => {
+    viewerState.dragging = true;
+    viewerState.startX = event.clientX - viewerState.x;
+    viewerState.startY = event.clientY - viewerState.y;
+    canvas.setPointerCapture(event.pointerId);
+  });
+
+  canvas.addEventListener("pointermove", (event) => {
+    if (!viewerState.dragging) return;
+    viewerState.x = event.clientX - viewerState.startX;
+    viewerState.y = event.clientY - viewerState.startY;
+    updateTransform();
+  });
+
+  canvas.addEventListener("pointerup", () => {
+    viewerState.dragging = false;
+  });
+
+  canvas.addEventListener("pointercancel", () => {
+    viewerState.dragging = false;
+  });
+
+  document.addEventListener("keydown", handleViewerKeydown);
+  updateTransform();
+}
+
+function closeImageViewer() {
+  document.querySelector(".image-viewer")?.remove();
+  document.body.classList.remove("viewer-open");
+  document.removeEventListener("keydown", handleViewerKeydown);
+}
+
+function handleViewerKeydown(event) {
+  if (event.key === "Escape") closeImageViewer();
 }
 
 function renderClientMeasurements(client) {
