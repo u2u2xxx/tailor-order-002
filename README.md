@@ -90,6 +90,42 @@ npm run build
 
 构建成功后，把 `dist/` 上传到国内静态托管，并把云函数的公网 HTTPS 地址写入生产环境的 `VITE_AI_API_URL` 后重新构建。
 
+### uniCloud 阿里云免费服务空间部署
+
+你已经开通 uniCloud 阿里云服务空间后，下一步按这个顺序做：
+
+1. 在 HBuilderX 或 uniCloud Web 控制台中，绑定当前项目到刚创建的阿里云服务空间。
+2. 上传云函数目录 `uniCloud-aliyun/cloudfunctions/generate-tryon`。
+3. 在云函数配置里确认已开启 URL 化，路径为 `/http/generate-tryon`。本项目已在该函数的 `package.json` 里写入 `cloudfunction-config.path`。
+4. 在云函数环境变量里配置：
+
+```text
+VOLCENGINE_API_KEY=火山方舟 API Key
+VOLCENGINE_IMAGE_MODEL=doubao-seedream-4-5-251128
+ALLOWED_ORIGIN=前端网页托管域名，测试时可先用 *
+```
+
+5. 部署云函数后，在 uniCloud 控制台复制 URL 化访问地址。地址通常类似：
+
+```text
+https://你的服务空间域名.bspapp.com/http/generate-tryon
+```
+
+6. 本地 `.env.local` 或前端托管的构建环境变量设置：
+
+```text
+VITE_AI_API_URL=https://你的服务空间域名.bspapp.com/http/generate-tryon
+VITE_SHARE_BASE_URL=你的前端网页托管域名
+```
+
+7. 重新构建前端：
+
+```powershell
+npm run build
+```
+
+8. 把 `dist/` 上传到 uniCloud 前端网页托管。上线后先用裁缝后台生成一张正面试穿图，确认云函数、火山引擎和 Supabase 写入都打通。
+
 ## 当前功能
 
 - 裁缝后台录入客户姓名、联系方式、照片和 13 项量体数据。

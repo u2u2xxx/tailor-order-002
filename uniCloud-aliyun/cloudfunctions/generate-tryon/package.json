@@ -1,0 +1,13 @@
+{
+  "name": "generate-tryon",
+  "version": "0.1.0",
+  "description": "Seedream 4.5 try-on image generation endpoint for uniCloud Aliyun",
+  "main": "index.js",
+  "dependencies": {},
+  "cloudfunction-config": {
+    "memorySize": 512,
+    "timeout": 120,
+    "path": "/http/generate-tryon",
+    "runtime": "Nodejs18"
+  }
+}
