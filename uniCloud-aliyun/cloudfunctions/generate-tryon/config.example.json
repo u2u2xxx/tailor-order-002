@@ -1,0 +1,5 @@
+{
+  "VOLCENGINE_API_KEY": "your_volcengine_api_key",
+  "VOLCENGINE_IMAGE_MODEL": "doubao-seedream-4-5-251128",
+  "ALLOWED_ORIGIN": "*"
+}

@@ -2,13 +2,22 @@
 
 const ARK_IMAGE_ENDPOINT = "https://ark.cn-beijing.volces.com/api/v3/images/generations";
 
+function readLocalConfig() {
+  try {
+    return require("./config.local.json");
+  } catch {
+    return {};
+  }
+}
+
 function response(statusCode, body) {
+  const localConfig = readLocalConfig();
   return {
     mpserverlessComposedResponse: true,
     isBase64Encoded: false,
     statusCode,
     headers: {
-      "access-control-allow-origin": process.env.ALLOWED_ORIGIN || "*",
+      "access-control-allow-origin": process.env.ALLOWED_ORIGIN || localConfig.ALLOWED_ORIGIN || "*",
       "access-control-allow-methods": "POST,OPTIONS",
       "access-control-allow-headers": "content-type,authorization",
       "content-type": "application/json; charset=utf-8",
@@ -50,8 +59,10 @@ function buildPrompt({ clientName, planTitle, material, fit, angleLabel, angleIn
 }
 
 async function generateTryOn(payload) {
-  const apiKey = process.env.VOLCENGINE_API_KEY;
-  const model = process.env.VOLCENGINE_IMAGE_MODEL || "doubao-seedream-4-5-251128";
+  const localConfig = readLocalConfig();
+  const apiKey = process.env.VOLCENGINE_API_KEY || localConfig.VOLCENGINE_API_KEY;
+  const model =
+    process.env.VOLCENGINE_IMAGE_MODEL || localConfig.VOLCENGINE_IMAGE_MODEL || "doubao-seedream-4-5-251128";
 
   if (!apiKey) {
     return response(500, { error: "Missing VOLCENGINE_API_KEY environment variable" });
