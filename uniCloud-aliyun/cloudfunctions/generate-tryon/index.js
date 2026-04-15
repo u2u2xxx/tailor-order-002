@@ -17,10 +17,11 @@ function response(statusCode, body) {
     isBase64Encoded: false,
     statusCode,
     headers: {
-      "access-control-allow-origin": process.env.ALLOWED_ORIGIN || localConfig.ALLOWED_ORIGIN || "*",
-      "access-control-allow-methods": "POST,OPTIONS",
-      "access-control-allow-headers": "content-type,authorization",
-      "content-type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Origin": process.env.ALLOWED_ORIGIN || localConfig.ALLOWED_ORIGIN || "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type,Authorization",
+      "Access-Control-Expose-Headers": "Content-Type",
+      "Content-Type": "application/json; charset=utf-8",
     },
     body: JSON.stringify(body),
   };
@@ -69,6 +70,12 @@ async function requestArkImage({ apiKey, model, prompt, image }) {
   };
 
   if (typeof uniCloud !== "undefined" && uniCloud.request) {
+    console.log("Seedream request via uniCloud.request", {
+      endpoint: ARK_IMAGE_ENDPOINT,
+      model,
+      hasImage: Boolean(image),
+    });
+
     const result = await uniCloud.request({
       url: ARK_IMAGE_ENDPOINT,
       method: "POST",
@@ -79,6 +86,13 @@ async function requestArkImage({ apiKey, model, prompt, image }) {
       },
       data: body,
       dataType: "json",
+    });
+
+    console.log("Seedream response via uniCloud.request", {
+      statusCode: result.statusCode,
+      hasData: Boolean(result.data),
+      hasImageUrl: Boolean(result.data?.data?.[0]?.url),
+      error: result.data?.error?.message || result.data?.message || "",
     });
 
     return {
@@ -125,6 +139,13 @@ async function generateTryOn(payload) {
   if (!payload?.personImageUrl) {
     return response(400, { error: "Missing personImageUrl" });
   }
+
+  console.log("generateTryOn start", {
+    hasApiKey: Boolean(apiKey),
+    model,
+    angle: payload.angle,
+    hasPersonImageUrl: Boolean(payload.personImageUrl),
+  });
 
   const prompt = buildPrompt(payload);
   const arkResponse = await requestArkImage({
@@ -183,6 +204,11 @@ exports.main = async (event = {}, context = {}) => {
   try {
     return await generateTryOn(payload, context);
   } catch (error) {
+    console.error("generateTryOn unhandled error", {
+      message: error.message,
+      stack: error.stack,
+    });
+
     return response(500, {
       error: error.message || "Unhandled uniCloud function error",
     });
