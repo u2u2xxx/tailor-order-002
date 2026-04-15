@@ -58,6 +58,60 @@ function buildPrompt({ clientName, planTitle, material, fit, angleLabel, angleIn
     .join("\n");
 }
 
+async function requestArkImage({ apiKey, model, prompt, image }) {
+  const body = {
+    model,
+    prompt,
+    image,
+    response_format: "url",
+    size: "2K",
+    watermark: false,
+  };
+
+  if (typeof uniCloud !== "undefined" && uniCloud.request) {
+    const result = await uniCloud.request({
+      url: ARK_IMAGE_ENDPOINT,
+      method: "POST",
+      timeout: 110000,
+      header: {
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`,
+      },
+      data: body,
+      dataType: "json",
+    });
+
+    return {
+      ok: result.statusCode >= 200 && result.statusCode < 300,
+      status: result.statusCode,
+      body: result.data,
+    };
+  }
+
+  const arkResponse = await fetch(ARK_IMAGE_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const resultText = await arkResponse.text();
+  let result;
+  try {
+    result = JSON.parse(resultText);
+  } catch {
+    result = { raw: resultText };
+  }
+
+  return {
+    ok: arkResponse.ok,
+    status: arkResponse.status,
+    body: result,
+  };
+}
+
 async function generateTryOn(payload) {
   const localConfig = readLocalConfig();
   const apiKey = process.env.VOLCENGINE_API_KEY || localConfig.VOLCENGINE_API_KEY;
@@ -73,42 +127,25 @@ async function generateTryOn(payload) {
   }
 
   const prompt = buildPrompt(payload);
-  const arkResponse = await fetch(ARK_IMAGE_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      prompt,
-      image: payload.personImageUrl,
-      response_format: "url",
-      size: "2K",
-      watermark: false,
-    }),
+  const arkResponse = await requestArkImage({
+    apiKey,
+    model,
+    prompt,
+    image: payload.personImageUrl,
   });
-
-  const resultText = await arkResponse.text();
-  let result;
-  try {
-    result = JSON.parse(resultText);
-  } catch {
-    result = { raw: resultText };
-  }
 
   if (!arkResponse.ok) {
     return response(arkResponse.status, {
-      error: result?.error?.message || result?.message || "Seedream generation failed",
-      detail: result,
+      error: arkResponse.body?.error?.message || arkResponse.body?.message || "Seedream generation failed",
+      detail: arkResponse.body,
     });
   }
 
-  const imageUrl = result?.data?.[0]?.url;
+  const imageUrl = arkResponse.body?.data?.[0]?.url;
   if (!imageUrl) {
     return response(502, {
       error: "Seedream did not return an image URL",
-      detail: result,
+      detail: arkResponse.body,
     });
   }
 
