@@ -57,7 +57,7 @@ export default async function handler(request, response) {
       prompt,
       image: payload.personImageUrl,
       response_format: "url",
-      size: "adaptive",
+      size: "1k",
       watermark: false,
     }),
   });
